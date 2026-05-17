@@ -1,30 +1,74 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
-import { supabase } from './lib/supabase';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import './App.css';
 
 function App() {
-  const store = useAuthStore();
-  // FOR PREVIEW: Use mock user
-  const user = store.user || { id: '1', full_name: 'Jane Doe', role: 'Operations', email: 'jane@example.com' };
-  const { loading, setLoading } = store;
+  const { user, loading, setUser, setLoading } = useAuthStore();
 
   useEffect(() => {
-    setLoading(false); // Skip loading for preview
-    /* 
+    let mounted = true;
+
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      ... (original logic)
+      if (!mounted) return;
+
+      if (session?.user) {
+        const metadata = session.user.user_metadata ?? {};
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? '',
+          full_name: metadata.full_name ?? metadata.name ?? session.user.email ?? 'User',
+          role: metadata.role ?? 'Employee',
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
     });
-    */
-  }, [setLoading]);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const metadata = session.user.user_metadata ?? {};
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? '',
+          full_name: metadata.full_name ?? metadata.name ?? session.user.email ?? 'User',
+          role: metadata.role ?? 'Employee',
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-900">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="container min-h-screen flex items-center justify-center">
+        <div className="glass-card p-8 text-center">
+          <div
+            className="animate-spin w-8 h-8 border-2 border-white/30 border-t-white rounded-full mb-4"
+            style={{ margin: '0 auto 1rem' }}
+          />
+          <p className="text-slate-400">Loading session...</p>
+        </div>
       </div>
     );
   }
@@ -34,11 +78,11 @@ function App() {
       <Routes>
         <Route 
           path="/login" 
-          element={!user ? <Login /> : <Navigate to="/" />} 
+          element={!user ? <Login /> : <Navigate to="/" replace />} 
         />
         <Route 
           path="/" 
-          element={user ? <Dashboard /> : <Navigate to="/login" />} 
+          element={user ? <Dashboard /> : <Navigate to="/login" replace />} 
         />
       </Routes>
     </Router>

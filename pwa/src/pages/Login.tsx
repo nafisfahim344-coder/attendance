@@ -1,15 +1,36 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/authStore';
 import { LogIn, Mail, Lock } from 'lucide-react';
+import {
+  TEAM_ADMINISTRATION_ID,
+  TEAM_CONSULTANTS_ID,
+} from '../utils/demoOrgState';
 
 const Login: React.FC = () => {
+  const { setUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [demoRole, setDemoRole] = useState<'Owner' | 'Admin' | 'Employee'>('Employee');
+  const [demoTeamId, setDemoTeamId] = useState(TEAM_CONSULTANTS_ID);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isSupabaseConfigured) {
+      setError(null);
+      setUser({
+        id: 'demo-user',
+        email: email || 'demo@example.com',
+        full_name: 'Demo User',
+        role: demoRole,
+        teamId: demoTeamId,
+      });
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -20,8 +41,9 @@ const Login: React.FC = () => {
 
     if (error) {
       setError(error.message);
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -33,6 +55,11 @@ const Login: React.FC = () => {
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
           <p className="text-slate-400 text-center">Sign in to manage your attendance</p>
+          {!isSupabaseConfigured && (
+            <p className="text-slate-400 text-sm text-center mt-2">
+              Demo mode active: any email/password will sign in locally.
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -59,6 +86,38 @@ const Login: React.FC = () => {
               required
             />
           </div>
+
+          {!isSupabaseConfigured && (
+            <div className="grid gap-4">
+              <div>
+                <label className="text-slate-400 text-sm">Demo Role</label>
+                <select
+                  className="input-field"
+                  style={{ marginTop: 8 }}
+                  value={demoRole}
+                  onChange={(e) => setDemoRole(e.target.value as 'Owner' | 'Admin' | 'Employee')}
+                >
+                  <option value="Owner">Owner</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Employee">Employee</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-slate-400 text-sm">
+                  Your team <span className="text-xs">(overtime only for Administration)</span>
+                </label>
+                <select
+                  className="input-field"
+                  style={{ marginTop: 8 }}
+                  value={demoTeamId}
+                  onChange={(e) => setDemoTeamId(e.target.value)}
+                >
+                  <option value={TEAM_CONSULTANTS_ID}>Consultants</option>
+                  <option value={TEAM_ADMINISTRATION_ID}>Administration Team</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="text-red-400 text-sm bg-red-400/10 p-3 rounded-lg border border-red-400/20">

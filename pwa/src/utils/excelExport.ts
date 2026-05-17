@@ -1,10 +1,8 @@
 import { utils, write, type WorkBook } from 'xlsx';
-import Share from 'react-native-share';
-import RNFS from 'react-native-fs';
 import type { ReportEntry } from '../types';
 
 /**
- * Export attendance data to Excel and trigger share dialog
+ * Export attendance data to Excel and trigger browser download
  */
 export async function exportToExcel(
   data: ReportEntry[],
@@ -13,7 +11,6 @@ export async function exportToExcel(
 ) {
   try {
     const fileName = `Attendance_${employeeName.replace(/\s/g, '_')}_${period.replace(/\s/g, '_')}.xlsx`;
-    const path = `${RNFS.DocumentDirectoryPath}/${fileName}`;
 
     // Map data to Excel format
     const rows = data.map((item) => ({
@@ -33,16 +30,17 @@ export async function exportToExcel(
     const wb: WorkBook = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Attendance');
 
-    const wbout = write(wb, { type: 'base64', bookType: 'xlsx' });
-
-    await RNFS.writeFile(path, wbout, 'base64');
-
-    await Share.open({
-      title: 'Export Attendance Report',
-      url: `file://${path}`,
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      failOnCancel: false,
-    });
+    // Generate binary string
+    const wbout = write(wb, { type: 'array', bookType: 'xlsx' });
+    
+    // Create Blob and Download link
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    window.URL.revokeObjectURL(url);
 
     return true;
   } catch (error) {

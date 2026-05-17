@@ -5,6 +5,8 @@ interface User {
   email: string;
   full_name: string;
   role: string;
+  /** Assigned org team id (Consultants vs Administration etc.) — demo + future API */
+  teamId?: string;
 }
 
 interface AuthState {
@@ -20,5 +22,5 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
   setUser: (user) => set({ user }),
   setLoading: (loading) => set({ loading }),
-  logout: () => set({ user: null }),
+  logout: () => set({ user: null, loading: false }),
 }));

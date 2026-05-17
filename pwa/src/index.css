@@ -100,6 +100,13 @@ h1, h2, h3 {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
 /* Utility Classes */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }

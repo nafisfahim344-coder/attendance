@@ -1,6 +1,5 @@
-/* Reset App.css to prevent layout interference */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
+  width: 100%;
+  min-height: 100vh;
+  text-align: left;
 }
