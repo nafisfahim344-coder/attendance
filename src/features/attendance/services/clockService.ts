@@ -10,6 +10,17 @@ async function logSecurityEvent(employeeId: string, eventType: string, details: 
   catch (e) { console.error('Security log error:', e); }
 }
 
+export function isWithinAttendanceWindow(start: string | null, end: string | null): boolean {
+  if (!start || !end) return true;
+  const now = format(new Date(), 'HH:mm');
+  return now >= start && now <= end;
+}
+
+export async function verifyWiFiPresence(currentBssid: string, branch: Branch): Promise<boolean> {
+  if (!branch.wifi_bssid) return false;
+  return currentBssid.toLowerCase() === branch.wifi_bssid.toLowerCase();
+}
+
 export async function performClockIn(
   employeeId: string, location: GeoLocation, deviceId: string, isMocked: boolean,
 ): Promise<{ success: boolean; session?: AttendanceSession; error?: string }> {
@@ -43,6 +54,38 @@ export async function performClockIn(
     if (error) throw error;
     return { success: true, session: session as AttendanceSession };
   } catch (e: any) { return { success: false, error: e.message || 'Clock-in failed.' }; }
+}
+
+export async function performAutoClockIn(
+  employeeId: string, bssid: string, deviceId: string,
+): Promise<{ success: boolean; session?: AttendanceSession; error?: string }> {
+  try {
+    const { data: emp } = await supabase.from('employees').select('*, branches(*)').eq('id', employeeId).single();
+    if (!emp?.is_active) return { success: false, error: 'Deactivated.' };
+    
+    const branch = emp.branches as unknown as Branch;
+    if (!branch) return { success: false, error: 'No assigned branch.' };
+
+    const isWindowActive = isWithinAttendanceWindow(branch.attendance_start_window, branch.attendance_end_window);
+    if (!isWindowActive) return { success: false, error: 'Outside attendance window.' };
+
+    const isWiFiMatched = await verifyWiFiPresence(bssid, branch);
+    if (!isWiFiMatched) return { success: false, error: 'Not on authorized WiFi.' };
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const { data: existing } = await supabase.from('attendance_sessions').select('id').eq('employee_id', employeeId).eq('date', today).is('clock_out', null).single();
+    if (existing) return { success: true, error: 'Already clocked in.' };
+
+    const now = new Date();
+    const { data: session, error } = await supabase.from('attendance_sessions').insert({
+      employee_id: employeeId, branch_id: branch.id, date: today,
+      clock_in: now.toISOString(), status: 'clocked_in',
+      is_friday: isFriday(now),
+    }).select('*').single();
+
+    if (error) throw error;
+    return { success: true, session: session as AttendanceSession };
+  } catch (e: any) { return { success: false, error: e.message }; }
 }
 
 export async function performClockOut(sessionId: string, employeeId: string, location: GeoLocation) {

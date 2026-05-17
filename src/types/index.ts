@@ -13,6 +13,7 @@ export interface Employee {
   assigned_branch_id: string | null;
   device_id: string | null;
   device_pending_approval: boolean;
+  mac_address: string | null;
   is_active: boolean;
   avatar_url: string | null;
   created_at: string;
@@ -25,6 +26,10 @@ export interface Branch {
   latitude: number;
   longitude: number;
   geofence_radius_meters: number;
+  wifi_ssid: string | null;
+  wifi_bssid: string | null;
+  attendance_start_window: string | null; // HH:mm
+  attendance_end_window: string | null;   // HH:mm
   is_active: boolean;
   created_at: string;
 }

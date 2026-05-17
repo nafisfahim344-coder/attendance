@@ -391,7 +391,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => logout()} className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors">
+          <button type="button" onClick={() => { supabase.auth.signOut(); logout(); }} className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors">
             <LogOut className="w-5 h-5" />
           </button>
         </div>
