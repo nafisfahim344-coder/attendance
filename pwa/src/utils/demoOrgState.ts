@@ -56,14 +56,14 @@ export function defaultBranches(): LocationBranch[] {
       name: 'Main Office (HQ)',
       latitude: 23.7808,
       longitude: 90.4193,
-      radius: 150,
+      radius: 200,
     },
     {
       id: 'branch2',
       name: 'Branch Office',
       latitude: 23.7461,
       longitude: 90.3742,
-      radius: 150,
+      radius: 200,
     }
   ];
 }

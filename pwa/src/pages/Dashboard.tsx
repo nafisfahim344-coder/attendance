@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import {
-  MapPin, Clock, Calendar, LogOut
+  MapPin, Clock, Calendar, LogOut, History as HistoryIcon
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   type DemoRosterEmployee, type TeamDefinition, type LocationBranch,
@@ -55,6 +56,7 @@ function MapClickEvents({ onAddBranch, isAdmin }: { onAddBranch: (lat: number, l
 }
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [status, setStatus] = useState<'IDLE' | 'CLOCKING' | 'SUCCESS'>('IDLE');
@@ -65,6 +67,7 @@ const Dashboard: React.FC = () => {
   const [teams] = useState<TeamDefinition[]>(loadTeams);
   const [branches, setBranches] = useState<LocationBranch[]>(loadBranches);
   const [roster, setRoster] = useState<DemoRosterEmployee[]>(loadRoster);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [leaves, setLeaves] = useState<LeaveRequest[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('attendance_leaves_v1') || '[]');
@@ -100,7 +103,18 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     fetchLastAttendance();
-    return () => clearInterval(timer);
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const fetchLastAttendance = async () => {
@@ -270,7 +284,104 @@ const Dashboard: React.FC = () => {
         </div>
 
         {activePanel === 'overview' && (
-          <p className="text-slate-400">Overview metrics go here.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Total Employees</p>
+              <p className="text-2xl font-bold text-white">{roster.length}</p>
+            </div>
+            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Present Today</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                {roster.filter(e => e.status === 'On Site').length}
+              </p>
+            </div>
+            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Remote</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {roster.filter(e => e.status === 'Remote').length}
+              </p>
+            </div>
+            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Pending Leaves</p>
+              <p className="text-2xl font-bold text-amber-400">
+                {leaves.filter(l => l.status === 'Pending').length}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activePanel === 'team' && (
+          <div style={cardStyle}>
+            <h4 className="text-white font-semibold mb-4">Team Roster</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="pb-2 font-semibold">Name</th>
+                    <th className="pb-2 font-semibold">Role</th>
+                    <th className="pb-2 font-semibold">Team</th>
+                    <th className="pb-2 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {roster.map(emp => (
+                    <tr key={emp.id}>
+                      <td className="py-3 text-white font-medium">{emp.name}</td>
+                      <td className="py-3">{emp.role}</td>
+                      <td className="py-3">{teamNameLookup(emp.teamId)}</td>
+                      <td className="py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          emp.status === 'On Site' ? 'bg-emerald-500/20 text-emerald-400' :
+                          emp.status === 'Remote' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-slate-500/20 text-slate-400'
+                        }`}>
+                          {emp.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activePanel === 'reports' && (
+          <div style={cardStyle}>
+            <h4 className="text-white font-semibold mb-4">Daily Attendance Report</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Attendance Rate</p>
+                <p className="text-3xl font-bold text-emerald-400">
+                  {Math.round(((roster.filter(e => e.status !== 'Off Shift').length) / roster.length) * 100)}%
+                </p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Late Arrivals</p>
+                <p className="text-3xl font-bold text-amber-400">1</p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Absentees</p>
+                <p className="text-3xl font-bold text-rose-400">
+                  {roster.filter(e => e.status === 'Off Shift').length}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h5 className="text-slate-400 text-xs font-semibold uppercase px-1">Summary By Team</h5>
+              {teams.map(t => {
+                const teamMembers = roster.filter(e => e.teamId === t.id);
+                const present = teamMembers.filter(e => e.status !== 'Off Shift').length;
+                return (
+                  <div key={t.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center text-sm">
+                    <span className="text-white">{t.name}</span>
+                    <span className="text-slate-400">{present} / {teamMembers.length} Present</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {activePanel === 'leave' && (
@@ -386,11 +497,27 @@ const Dashboard: React.FC = () => {
             {currentUserData.name.charAt(0)}
           </div>
           <div>
-            <h2 className="text-white font-semibold text-lg">{currentUserData.name}</h2>
+            <h2 className="text-white font-semibold text-lg flex items-center gap-2">
+              {currentUserData.name}
+              {!isOnline && (
+                <span className="text-[10px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/30">Offline</span>
+              )}
+              {isOnline && (
+                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" title="Online"></span>
+              )}
+            </h2>
             <p className="text-slate-400 text-sm">{currentUserData.role} · {teamNameLookup(userTeamId)}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/history')}
+            className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors"
+            title="Attendance History"
+          >
+            <HistoryIcon className="w-5 h-5" />
+          </button>
           <button type="button" onClick={() => { supabase.auth.signOut(); logout(); }} className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors">
             <LogOut className="w-5 h-5" />
           </button>
