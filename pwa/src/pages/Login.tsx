@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { LogIn, Mail, Lock, UserCircle } from 'lucide-react';
-import { loadRoster, DemoRosterEmployee } from '../utils/demoOrgState';
+import { loadRoster, type DemoRosterEmployee } from '../utils/demoOrgState';
 
 const Login: React.FC = () => {
   const { setUser } = useAuthStore();

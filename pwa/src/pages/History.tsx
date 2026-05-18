@@ -19,7 +19,7 @@ const History: React.FC = () => {
     setLoading(true);
     try {
       // Mock data for preview
-      if (user.id === 'mock-user-id') {
+      if (!isSupabaseConfigured || user.id.startsWith('e') || user.id === 'demo-user') {
         const today = new Date();
         const mockData = Array.from({ length: 5 }).map((_, i) => {
           const date = new Date(today);

@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import History from './pages/History';
 import './App.css';
 
 function App() {
@@ -83,6 +84,10 @@ function App() {
         <Route 
           path="/" 
           element={user ? <Dashboard /> : <Navigate to="/login" replace />} 
+        />
+        <Route
+          path="/history"
+          element={user ? <History /> : <Navigate to="/login" replace />}
         />
       </Routes>
     </Router>
